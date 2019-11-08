@@ -782,7 +782,11 @@ private:
 	void PlotBastionMoves(int iTurnsToArrive);
 	void PlotGuardImprovementMoves(int iTurnsToArrive);
 	void PlotRepositionMoves();
+<<<<<<< HEAD
 	void PlotDefensiveMoves(int iTurnsToArrive);
+=======
+	//void PlotDefensiveMoves(int iTurnsToArrive);
+>>>>>>> master
 //--------------------------------
 	void PlotAncientRuinMoves(int iNumTurnsAway);
 	void PlotAirInterceptMoves();

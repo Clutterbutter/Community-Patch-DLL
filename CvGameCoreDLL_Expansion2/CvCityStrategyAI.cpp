@@ -3726,24 +3726,12 @@ bool CityStrategyAIHelpers::IsTestCityStrategy_CapitalNeedSettler(AICityStrategy
 				int iWeightThreshold = pCityStrategy->GetWeightThreshold() + iWeightThresholdModifier;	// 130
 
 				int iGameTurn = GC.getGame().getGameTurn();
-#if defined (MOD_AI_SMART_FASTER_CAPITAL_SETTLER_NEED_BY_DIFFICULTY_SPEED)
-				int iDifficultyBonus = 4 * (200 - ((GC.getGame().getHandicapInfo().getAIGrowthPercent() + GC.getGame().getHandicapInfo().getAITrainPercent()) / 2));
-				iDifficultyBonus = (iDifficultyBonus * 100) / ((GC.getGame().getGameSpeedInfo().getGrowthPercent() + GC.getGame().getGameSpeedInfo().getTrainPercent()) / 2);
-				if((iCitiesPlusSettlers == 1 && ((iGameTurn * iDifficultyBonus) / 100) > iWeightThreshold) ||
-					(iCitiesPlusSettlers == 2 && ((iGameTurn * iDifficultyBonus) / 200) > iWeightThreshold) || 
-					(iCitiesPlusSettlers == 3 && ((iGameTurn * iDifficultyBonus) / 400) > iWeightThreshold)
-#if defined(MOD_BALANCE_CORE)
-					|| (iCitiesPlusSettlers == 4 && ((iGameTurn * iDifficultyBonus) / 800) > iWeightThreshold) 
-					|| (iCitiesPlusSettlers == 5 && ((iGameTurn * iDifficultyBonus) / 1600) > iWeightThreshold) 
-#endif
-#else
 				if((iCitiesPlusSettlers == 1 && (iGameTurn * 4) > iWeightThreshold) ||
 					(iCitiesPlusSettlers == 2 && (iGameTurn * 2) > iWeightThreshold) || 
 					(iCitiesPlusSettlers == 3 && iGameTurn > iWeightThreshold) 
 #if defined(MOD_BALANCE_CORE)
 					|| (iCitiesPlusSettlers == 4 && (iGameTurn / 2) > iWeightThreshold) 
 					|| (iCitiesPlusSettlers == 5 && (iGameTurn / 4) > iWeightThreshold) 
-#endif
 #endif
 					)
 				{
@@ -4648,14 +4636,14 @@ int CityStrategyAIHelpers::GetBuildingYieldValue(CvCity *pCity, BuildingTypes eB
 
 		if (iValue <= pkBuildingInfo->GetYieldChangePerPop(eYield))
 			iValue = pkBuildingInfo->GetYieldChangePerPop(eYield);
-		
+
 		iFlatYield += iValue;
 	}
 	if (pkBuildingInfo->GetYieldChangePerReligion(eYield) > 0)
 	{
-		int numReligions = pCity->GetCityReligions()->GetNumReligionsWithFollowers(); 
+		int numReligions = pCity->GetCityReligions()->GetNumReligionsWithFollowers();
 		int tempYield = (pkBuildingInfo->GetYieldChangePerReligion(eYield) * numReligions) / 100;
-		iFlatYield += numReligions == 1 ? tempYield/2 : tempYield;
+		iFlatYield += numReligions == 1 ? tempYield / 2 : tempYield;
 	}
 
 	if (pkBuildingInfo->GetThemingYieldBonus(eYield) > 0)
@@ -4676,10 +4664,13 @@ int CityStrategyAIHelpers::GetBuildingYieldValue(CvCity *pCity, BuildingTypes eB
 	{
 		iFlatYield += (pkBuildingInfo->GetSeaPlotYieldChange(eYield) * pCity->countNumWaterPlots());
 	}
-	if (pkBuildingInfo->GetScienceFromYield(eYield) > 0)
+	for (int j = 0; j < NUM_YIELD_TYPES; j++)
 	{
-		iFlatYield += iYieldRate / pkBuildingInfo->GetScienceFromYield(eYield);
-	}
+		if (pkBuildingInfo->GetYieldFromYield(eYield, (YieldTypes)j) > 0)
+		{
+			iFlatYield += iYieldRate / pkBuildingInfo->GetYieldFromYield(eYield, (YieldTypes)j);
+		}
+	}	
 	if (pkBuildingInfo->GetGreatWorkYieldChange(eYield) > 0)
 	{
 		iFlatYield += pkBuildingInfo->GetGreatWorkYieldChange(eYield) * (kPlayer.GetCulture()->GetNumGreatWorkSlots() / 2);
@@ -5203,6 +5194,11 @@ int CityStrategyAIHelpers::GetBuildingYieldValue(CvCity *pCity, BuildingTypes eB
 	if (pkBuildingInfo->GetAreaYieldModifier(eYield) > 0)
 	{
 		iModifier += (pkBuildingInfo->GetAreaYieldModifier(eYield) * 5);
+	}
+
+	if (pkBuildingInfo->GetYieldFromProcessModifier(eYield) > 0)
+	{
+		iModifier += (pkBuildingInfo->GetYieldFromProcessModifier(eYield) * 2);
 	}
 
 	if (pkBuildingInfo->GetYieldModifier(eYield) > 0)

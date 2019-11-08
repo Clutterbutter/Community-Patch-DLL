@@ -798,6 +798,11 @@ VALUES
 	('BUILDING_SIEGE_WORKSHOP', 'FLAVOR_HAPPINESS', 25),
 	('BUILDING_MOMA', 'FLAVOR_CULTURE', 100);
 
+INSERT INTO Building_YieldChangesPerPop
+	(BuildingType, YieldType, Yield)
+VALUES
+	('BUILDING_MOMA', 'YIELD_CULTURE', 25);
+
 INSERT INTO Civilization_BuildingClassOverrides
 	(CivilizationType, BuildingClassType, BuildingType)
 VALUES
@@ -822,10 +827,10 @@ VALUES
 	('BUILDING_SATRAPS_COURT', 'YIELD_GOLD', 20),
 	('BUILDING_SATRAPS_COURT', 'YIELD_GOLDEN_AGE_POINTS', 20);
 
-INSERT INTO Building_ScienceFromYield
-	(BuildingType, YieldType, Yield)
+INSERT INTO Building_YieldFromYieldPercent
+	(BuildingType, YieldIn, YieldOut, Value)
 VALUES
-	('BUILDING_HANSE', 'YIELD_GOLD', 10);
+	('BUILDING_HANSE', 'YIELD_GOLD', 'YIELD_SCIENCE', 10);
 
 INSERT INTO Building_ImprovementYieldChanges
 	(BuildingType, ImprovementType, YieldType, Yield)

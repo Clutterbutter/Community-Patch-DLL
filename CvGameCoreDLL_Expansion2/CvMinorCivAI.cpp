@@ -5062,7 +5062,11 @@ void CvMinorCivAI::DoTurn()
 				}
 			}
 		}
+<<<<<<< HEAD
 		//Let's see if we can make peace
+=======
+		//Let's see if we can launch a military action.
+>>>>>>> master
 		DoTestEndSkirmishes(NO_PLAYER);
 #endif
 
@@ -12929,6 +12933,12 @@ void CvMinorCivAI::DoLiberationByMajor(PlayerTypes eLiberator, TeamTypes eConque
 #else
 	iNewInfluence = max(GetAlliesThreshold(), iNewInfluence); // Must be at least enough to make us allies
 #endif
+	int iEra = GET_PLAYER(eLiberator).GetCurrentEra();
+	if (iEra <= 0)
+		iEra = 1;
+
+	iNewInfluence *= iEra;
+
 #if defined(MOD_DIPLOMACY_CITYSTATES_QUESTS)
 	}
 	//Was this liberated from a barbarian? Less influence for you!
@@ -14340,7 +14350,7 @@ int CvMinorCivAI::GetCurrentGoldFlatBonus(PlayerTypes ePlayer)
 	if(ePlayer >= MAX_MAJOR_CIVS)
 		return 0;
 
-	// Only for Religious trait minors
+	// Only for Mercantile trait minors
 	if(GetTrait() != MINOR_CIV_TRAIT_MERCANTILE)
 		return 0;
 
@@ -14384,7 +14394,7 @@ int CvMinorCivAI::GetCurrentGoldFlatBonus(PlayerTypes ePlayer)
 	return iAmount;
 }
 
-/// Total faith bonus from this minor civ for this player
+/// Total Gold bonus from this minor civ for this player
 int CvMinorCivAI::GetCurrentGoldBonus(PlayerTypes ePlayer)
 {
 	int iValue = 0;
@@ -17133,7 +17143,7 @@ void CvMinorCivAI::DoElection()
 				}
 				if (MOD_BALANCE_CORE_SPIES_ADVANCED)
 				{
-					iValue *= iEra;
+					iValue *= (iEra + iEra);
 				}
 				ChangeFriendshipWithMajor(ePlayer, iValue, false);
 
@@ -17154,6 +17164,14 @@ void CvMinorCivAI::DoElection()
 				}
 #endif
 				GET_PLAYER(ePlayer).doInstantYield(INSTANT_YIELD_TYPE_SPY_ATTACK, false, NO_GREATPERSON, NO_BUILDING, 1);
+
+				int iNewResult = GC.getGame().getSmallFakeRandNum(100, *pCapital->plot());
+				int iValueNeeded = 60;
+
+				if (iNewResult > iValueNeeded)
+				{
+					GET_PLAYER(ePlayer).GetEspionage()->LevelUpSpy(iSpyID);
+				}
 
 			}
 			else

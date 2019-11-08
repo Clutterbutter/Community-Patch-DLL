@@ -1644,6 +1644,13 @@ void CvActiveResolution::DoEffects(PlayerTypes ePlayer)
 				if(GC.getGame().GetGameLeagues()->IsLuxuryHappinessBanned(pPlayer->GetID(), eResourceLoop))
 				{
 					pPlayer->CheckForMonopoly(eResourceLoop);
+					CvCity* pLoopCity;
+					int iLoop;
+					for (pLoopCity = pPlayer->firstCity(&iLoop); pLoopCity != NULL; pLoopCity = pPlayer->nextCity(&iLoop))
+					{
+						if (pLoopCity->GetResourceDemanded() == eResourceLoop)
+							pLoopCity->DoPickResourceDemanded();
+					}
 				}
 			}
 		}
@@ -11684,11 +11691,11 @@ int CvLeagueAI::ScoreVoteChoiceYesNo(CvProposal* pProposal, int iChoice, bool bE
 
 		if (bOwnedByAnyPlayer && !bOwnedByUs)
 		{
-			iScore = 8 * iOtherPlayerResourceFactor;
+			iScore = 5 * iOtherPlayerResourceFactor;
 		}
 		else if (bOwnedByUs)
 		{
-			iScore = 10 * iUsResourceFactor;
+			iScore = 8 * iUsResourceFactor;
 		}
 
 		if (!bOwnedByAnyPlayer && !bOwnedByUs)

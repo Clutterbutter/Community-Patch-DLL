@@ -1369,6 +1369,7 @@ void CvLuaPlayer::PushMethods(lua_State* L, int t)
 	Method(GetMajorCivOpinion);
 	Method(GetMajorityReligion);
 	//JFD
+	Method(GetWLTKDResourceTT);
 	Method(GetNumNationalWonders);
 	Method(GetNumInternationalTradeRoutes);
 	Method(GetNumInternalTradeRoutes);
@@ -10276,8 +10277,15 @@ int CvLuaPlayer::lIsPlayerDenouncedEnemy(lua_State* L)
 int CvLuaPlayer::lIsUntrustworthyFriend(lua_State* L)
 {
 	CvPlayerAI* pkPlayer = GetInstance(L);
+	PlayerTypes eOtherPlayer = (PlayerTypes)lua_tointeger(L, 2);
 
-	const bool bValue = pkPlayer->GetDiplomacyAI()->IsUntrustworthyFriend();
+	if (eOtherPlayer == NO_PLAYER)
+	{
+		lua_pushboolean(L, false);
+		return 0;
+	}
+
+	const bool bValue = pkPlayer->GetDiplomacyAI()->IsUntrustworthyFriend(eOtherPlayer);
 
 	lua_pushboolean(L, bValue);
 	return 1;
@@ -12985,7 +12993,7 @@ int CvLuaPlayer::lGetOpinionTable(lua_State* L)
 		kOpinion.m_str = Localization::Lookup("TXT_KEY_DIPLO_MILITARY_PROMISE_BROKEN_WITH_OTHERS");
 		aOpinions.push_back(kOpinion);
 	}
-
+	/*
 	iValue = pDiploAI->GetIgnoredMilitaryPromiseScore(eWithPlayer);
 	if (iValue != 0)
 	{
@@ -12993,7 +13001,7 @@ int CvLuaPlayer::lGetOpinionTable(lua_State* L)
 		kOpinion.m_iValue = iValue;
 		kOpinion.m_str = Localization::Lookup("TXT_KEY_DIPLO_MILITARY_PROMISE_IGNORED");
 		aOpinions.push_back(kOpinion);
-	}
+	}*/
 	
 	iValue = pDiploAI->GetBrokenExpansionPromiseScore(eWithPlayer);
 	if (iValue != 0)
@@ -14935,6 +14943,37 @@ int CvLuaPlayer::lDoForceDefPact(lua_State* L)
 }
 #endif
 #if defined(MOD_BALANCE_CORE)
+int CvLuaPlayer::lGetWLTKDResourceTT(lua_State* L)
+{
+	CvString WLTKDTT = "";
+	CvPlayer* pkPlayer = GetInstance(L);
+	const ResourceTypes eResource = (ResourceTypes)lua_tointeger(L, 2);
+	if (eResource != NO_RESOURCE)
+	{
+		CvCity* pLoopCity;
+		int iLoop;
+		for (pLoopCity = pkPlayer->firstCity(&iLoop); pLoopCity != NULL; pLoopCity = pkPlayer->nextCity(&iLoop))
+		{
+			if (pLoopCity == NULL)
+				continue;
+
+			if (pLoopCity->GetWeLoveTheKingDayCounter() > 0)
+				continue;
+
+			if (pLoopCity->GetResourceDemanded() == eResource)
+			{
+				if (WLTKDTT == "")
+					WLTKDTT = Localization::Lookup("TXT_KEY_TRADE_WLTKD_RESOURCE_CITIES").toUTF8();
+
+				WLTKDTT += "[NEWLINE][ICON_BULLET] ";
+				WLTKDTT += pLoopCity->getName();
+			}
+		}
+	}
+
+	lua_pushstring(L, WLTKDTT.c_str());
+	return 1;
+}
 int CvLuaPlayer::lGetNumNationalWonders(lua_State* L)
 {
 	CvPlayer* pkPlayer = GetInstance(L);

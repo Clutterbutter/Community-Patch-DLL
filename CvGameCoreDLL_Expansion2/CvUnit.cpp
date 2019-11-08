@@ -26290,6 +26290,9 @@ bool CvUnit::canAcquirePromotion(PromotionTypes ePromotion) const
 	{
 		return false;
 	}
+
+	if (pkPromotionInfo->IsMountedOnly() && !getUnitInfo().IsMounted())
+		return false;
 #endif
 	//Out-ranged?
 	if (pkPromotionInfo->GetMinRange() != 0 && pkPromotionInfo->GetMinRange() > GetRange())

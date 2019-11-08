@@ -492,7 +492,7 @@ void CvLuaCity::PushMethods(lua_State* L, int t)
 	Method(GetBaseYieldRateFromLeague);
 #endif
 #if defined(MOD_BALANCE_CORE)
-	Method(GetScienceFromCityYield);
+	Method(GetYieldFromCityYield);
 #endif
 
 	Method(GetBaseYieldRateFromReligion);
@@ -4536,18 +4536,24 @@ int CvLuaCity::lGetBaseYieldRateFromLeague(lua_State* L)
 #endif
 #if defined(MOD_BALANCE_CORE)
 //------------------------------------------------------------------------------
-int CvLuaCity::lGetScienceFromCityYield(lua_State* L)
+int CvLuaCity::lGetYieldFromCityYield(lua_State* L)
 {
 	int iResult = 0;
 	CvCity* pkCity = GetInstance(L);
+	YieldTypes eIndex1 = (YieldTypes)lua_tointeger(L, 2);
 	for(int iI = 0; iI < NUM_YIELD_TYPES; iI++)
 	{
-		YieldTypes eIndex = (YieldTypes)iI;
-		if(eIndex == NO_YIELD)
+		YieldTypes eIndex2 = (YieldTypes)iI;
+		if(eIndex2 == NO_YIELD)
 		{
 			continue;
 		}
-		iResult += pkCity->GetScienceFromYield(eIndex);
+		if (eIndex2 == eIndex1)
+		{
+			continue;
+		}
+		//NOTE! We flip it here, because we want the OUT yield
+		iResult += pkCity->GetRealYieldFromYield(eIndex2, eIndex1);
 	}
 	lua_pushinteger(L, iResult);
 	return 1;
@@ -4948,17 +4954,20 @@ int CvLuaCity::lGetSpecialistCityModifier(lua_State* L)
 			iResult += (iNumPuppets * GET_PLAYER(pkCity->getOwner()).GetPlayerTraits()->GetPerPuppetGreatPersonRateModifier(eGreatPerson));
 		}
 
-		ReligionTypes eMajority = pkCity->GetCityReligions()->GetReligiousMajority();
-		if (eMajority != NO_RELIGION)
+		if (GET_PLAYER(pkCity->getOwner()).getGoldenAgeTurns() > 0)
 		{
-			const CvReligion* pReligion = GC.getGame().GetGameReligions()->GetReligion(eMajority, pkCity->getOwner());
-			if (pReligion)
+			ReligionTypes eMajority = pkCity->GetCityReligions()->GetReligiousMajority();
+			if (eMajority != NO_RELIGION)
 			{
-				iResult += pReligion->m_Beliefs.GetGoldenAgeGreatPersonRateModifier(eGreatPerson, pkCity->getOwner(), pkCity);
-				BeliefTypes eSecondaryPantheon = pkCity->GetCityReligions()->GetSecondaryReligionPantheonBelief();
-				if (eSecondaryPantheon != NO_BELIEF)
+				const CvReligion* pReligion = GC.getGame().GetGameReligions()->GetReligion(eMajority, pkCity->getOwner());
+				if (pReligion)
 				{
-					iResult += GC.GetGameBeliefs()->GetEntry(eSecondaryPantheon)->GetGoldenAgeGreatPersonRateModifier(eGreatPerson);
+					iResult += pReligion->m_Beliefs.GetGoldenAgeGreatPersonRateModifier(eGreatPerson, pkCity->getOwner(), pkCity);
+					BeliefTypes eSecondaryPantheon = pkCity->GetCityReligions()->GetSecondaryReligionPantheonBelief();
+					if (eSecondaryPantheon != NO_BELIEF)
+					{
+						iResult += GC.GetGameBeliefs()->GetEntry(eSecondaryPantheon)->GetGoldenAgeGreatPersonRateModifier(eGreatPerson);
+					}
 				}
 			}
 		}

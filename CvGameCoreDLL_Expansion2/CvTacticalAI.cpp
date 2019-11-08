@@ -2389,9 +2389,13 @@ void CvTacticalAI::PlotRepositionMoves()
 
 //this function takes care of moving around combat units without contact to the enemy
 //previously this was separated into garrison, bastion, reposition moves and homeland patrol, sentry
+/*
 void CvTacticalAI::PlotDefensiveMoves(int iTurnsToArrive)
 {
+	//
 }
+
+*/
 
 /// Move barbarians across the map
 void CvTacticalAI::PlotBarbarianMove(bool bAggressive)

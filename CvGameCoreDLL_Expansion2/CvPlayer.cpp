@@ -5400,7 +5400,7 @@ void CvPlayer::UpdateCityThreatCriteria()
 	if(getNumCities() <= 1)
 		return;
 
-	//Reset the critera.
+	//Reset the criteria.
 	int iLoop;
 	for (CvCity* pLoopCity = firstCity(&iLoop); pLoopCity != NULL; pLoopCity = nextCity(&iLoop))
 	{
@@ -9792,16 +9792,27 @@ void CvPlayer::DoLiberatePlayer(PlayerTypes ePlayer, int iOldCityID, bool bForce
 			pDiploAI->SetLandDisputeLevel(eMePlayer, DISPUTE_LEVEL_NONE);
 			pDiploAI->SetWonderDisputeLevel(eMePlayer, DISPUTE_LEVEL_NONE);
 			pDiploAI->SetMinorCivDisputeLevel(eMePlayer, DISPUTE_LEVEL_NONE);
+			pDiploAI->SetVictoryDisputeLevel(eMePlayer, DISPUTE_LEVEL_NONE);
 			pDiploAI->SetWarmongerThreat(eMePlayer, THREAT_NONE);
 			pDiploAI->SetOtherPlayerWarmongerAmountTimes100(eMePlayer, 0);
 
 			pDiploAI->SetPlayerNoSettleRequestCounter(eMePlayer, -1);
 			pDiploAI->SetPlayerStopSpyingRequestCounter(eMePlayer, -1);
 #if defined(MOD_BALANCE_CORE)
+			pDiploAI->SetVictoryBlockLevel(eMePlayer, BLOCK_LEVEL_NONE);
+			
 			pDiploAI->SetPlayerNoSettleRequestEverAsked(eMePlayer, false);
-			pDiploAI->SetPlayerStopSpyingRequestEverAsked(eMePlayer, false);			
+			pDiploAI->SetPlayerStopSpyingRequestEverAsked(eMePlayer, false);
+			
 			pDiploAI->SetNumDemandEverMade(eMePlayer, -pDiploAI->GetNumDemandEverMade(eMePlayer));
 			pDiploAI->SetNumTimesCoopWarDenied(eMePlayer, 0);
+			
+			if (pDiploAI->GetRecentAssistValue(eMePlayer) > 0)
+			{
+				pDiploAI->ChangeRecentAssistValue(eMePlayer, -pDiploAI->GetRecentAssistValue(eMePlayer));
+			}
+			
+			pDiploAI->ChangeNumTimesRazed(eMePlayer, -pDiploAI->GetNumTimesRazed(eMePlayer));
 #endif
 			pDiploAI->SetDemandCounter(eMePlayer, -1);
 			pDiploAI->ChangeNumTimesCultureBombed(eMePlayer, -pDiploAI->GetNumTimesCultureBombed(eMePlayer));
@@ -9853,6 +9864,9 @@ void CvPlayer::DoLiberatePlayer(PlayerTypes ePlayer, int iOldCityID, bool bForce
 			pDiploAI->SetFriendDeclaredWarOnUs(eMePlayer, false);
 
 			pDiploAI->ChangeNumTimesNuked(eMePlayer, -pDiploAI->GetNumTimesNuked(eMePlayer));
+			
+			pDiploAI->SetTurnsSinceWeDislikedTheirProposal(eMePlayer, -1);
+			pDiploAI->SetTurnsSinceTheyFoiledOurProposal(eMePlayer, -1);
 		}
 	}
 
@@ -16174,6 +16188,8 @@ int CvPlayer::getProductionNeeded(UnitTypes eUnit) const
 	if(pkUnitClassInfo == NULL)
 		return 0;
 
+	bool bCombat = (pkUnitEntry->GetCombat() > 0 || pkUnitEntry->GetRangedCombat() > 0);
+
 	int iProductionNeeded = pkUnitEntry->GetProductionCost();
 	iProductionNeeded *= 100 + getUnitClassCount(eUnitClass) * pkUnitClassInfo->getInstanceCostModifier();
 	iProductionNeeded /= 100;
@@ -16213,7 +16229,7 @@ int CvPlayer::getProductionNeeded(UnitTypes eUnit) const
 		}
 	}
 #if defined(MOD_BALANCE_DYNAMIC_UNIT_SUPPLY)
-	if (MOD_BALANCE_DYNAMIC_UNIT_SUPPLY && (pkUnitEntry->GetCombat() > 0 || pkUnitEntry->GetRangedCombat() > 0))
+	if (MOD_BALANCE_DYNAMIC_UNIT_SUPPLY && bCombat)
 	{
 		int iWarWeariness = GetCulture()->GetWarWeariness();
 		iMod += min(75, iWarWeariness);
@@ -16223,7 +16239,7 @@ int CvPlayer::getProductionNeeded(UnitTypes eUnit) const
 	iProductionNeeded /= 100;
 #endif
 
-	if(!isHuman() && !IsAITeammateOfHuman() && !isBarbarian())
+	if (!isHuman() && !IsAITeammateOfHuman() && !isBarbarian() && bCombat)
 	{
 		if(isWorldUnitClass(eUnitClass))
 		{
@@ -16393,7 +16409,13 @@ int CvPlayer::getProductionNeeded(BuildingTypes eTheBuilding) const
 			iProductionModifier += GC.getGame().getHandicapInfo().getAIConstructPercent() - 100;
 		}
 
-		iProductionModifier += std::max(0, ((GC.getGame().getHandicapInfo().getAIPerEraModifier() * GetCurrentEra()) + 100)) - 100;
+		if (MOD_BALANCE_CORE_DIFFICULTY)
+		{
+			if (!isWorldWonderClass(pkBuildingInfo->GetBuildingClassInfo()))
+				iProductionModifier += std::max(0, ((GC.getGame().getHandicapInfo().getAIPerEraModifier() * GetCurrentEra()) + 100)) - 100;
+		}
+		else
+			iProductionModifier += std::max(0, ((GC.getGame().getHandicapInfo().getAIPerEraModifier() * GetCurrentEra()) + 100)) - 100;
 	}
 
 	iProductionNeeded *= (100 + iProductionModifier);
@@ -16438,8 +16460,11 @@ int CvPlayer::getProductionNeeded(ProjectTypes eProject) const
 			iProductionNeeded /= 100;
 		}
 
-		iProductionNeeded *= std::max(0, ((GC.getGame().getHandicapInfo().getAIPerEraModifier() * GetCurrentEra()) + 100));
-		iProductionNeeded /= 100;
+		if (!MOD_BALANCE_CORE_DIFFICULTY)
+		{
+			iProductionNeeded *= std::max(0, ((GC.getGame().getHandicapInfo().getAIPerEraModifier() * GetCurrentEra()) + 100));
+			iProductionNeeded /= 100;
+		}
 	}
 
 	return std::max(1, iProductionNeeded);
@@ -18554,6 +18579,23 @@ int CvPlayer::GetJONSCulturePerTurnFromCities() const
 	}
 
 	return iCulturePerTurn;
+}
+
+//	--------------------------------------------------------------------------------
+/// Culture per turn from Cities times 100
+int CvPlayer::GetJONSCultureFromCitiesTimes100(bool bIgnoreTrade) const
+{
+	int iCulture = 0;
+
+	const CvCity* pLoopCity;
+
+	int iLoop;
+	for(pLoopCity = firstCity(&iLoop); pLoopCity != NULL; pLoopCity = nextCity(&iLoop))
+	{
+		iCulture += pLoopCity->getYieldRateTimes100(YIELD_CULTURE, bIgnoreTrade);
+	}
+
+	return iCulture;
 }
 
 //	--------------------------------------------------------------------------------
@@ -20785,7 +20827,7 @@ int CvPlayer::GetExcessHappiness() const
 {
 	if(isMinorCiv() || isBarbarian() || (getNumCities() == 0))
 	{
-		return 100;
+		return 50;
 	}
 
 	return m_iHappinessTotal;
@@ -28597,28 +28639,12 @@ void CvPlayer::ChangeGreatPersonExpendGold(int ichange)
 //	Calculate score-scaled ArtsyGreatPersonRateModifier
 int CvPlayer::getArtsyGreatPersonRateModifier()
 {
-	int iArtsyMod = GC.getGame().GetGameLeagues()->GetArtsyGreatPersonRateModifier(GetID());
-	if(iArtsyMod == 0) return 0;
-	// scale GPP the same way as yields; tricky part is for negatives!
-	if(iArtsyMod > 0)
-		iArtsyMod *= ScoreDifferencePercent(1);
-	else
-		iArtsyMod *= (100-ScoreDifferencePercent(1));
-	iArtsyMod /= 100;
-	return iArtsyMod;
+	return GC.getGame().GetGameLeagues()->GetArtsyGreatPersonRateModifier(GetID());
 }
 //	Calculate score-scaled ScienceyGreatPersonRateModifier
 int CvPlayer::getScienceyGreatPersonRateModifier()
 {
-	int iScienceyMod = GC.getGame().GetGameLeagues()->GetScienceyGreatPersonRateModifier(GetID());
-	if(iScienceyMod == 0) return 0;
-	// scale GPP the same way as yields; tricky part is for negatives!
-	if(iScienceyMod > 0)
-		iScienceyMod *= ScoreDifferencePercent(2);
-	else
-		iScienceyMod *= (100-ScoreDifferencePercent(2));
-	iScienceyMod /= 100;
-	return iScienceyMod;
+	return GC.getGame().GetGameLeagues()->GetScienceyGreatPersonRateModifier(GetID());
 }
 #endif
 
@@ -28679,13 +28705,8 @@ void CvPlayer::recomputeGreatPeopleModifiers()
 	m_iGreatPeopleRateModifier += GetGreatPeopleRateModFromFriendships();
 
 	// And effects from Leagues
-#if defined(MOD_BALANCE_CORE)
-	int iArtsyMod = getArtsyGreatPersonRateModifier();
-	int iScienceyMod = getScienceyGreatPersonRateModifier();
-#else
 	int iArtsyMod = GC.getGame().GetGameLeagues()->GetArtsyGreatPersonRateModifier(GetID());
 	int iScienceyMod = GC.getGame().GetGameLeagues()->GetScienceyGreatPersonRateModifier(GetID());
-#endif
 	if (iArtsyMod != 0)
 	{
 		m_iGreatWriterRateModifier += iArtsyMod;
@@ -31425,7 +31446,7 @@ void CvPlayer::ChangeNumHistoricEvents(HistoricEventTypes eHistoricEvent, int iC
 		}
 	}
 #if defined(MOD_BALANCE_CORE_DIFFICULTY)
-	if (MOD_BALANCE_CORE_DIFFICULTY && !isMinorCiv() && !isHuman() && getNumCities() > 1)
+	if (MOD_BALANCE_CORE_DIFFICULTY && !isMinorCiv() && !isHuman() && !isBarbarian() && getNumCities() > 1)
 	{
 		int iYieldHandicap = DoDifficultyBonus(eHistoricEvent);
 		if (GC.getLogging() && GC.getAILogging())
@@ -34350,7 +34371,7 @@ void CvPlayer::CheckForMurder(PlayerTypes ePossibleVictimPlayer)
 	// but the slot status is used to determine if the player is human or not, so it looks like it is an AI!
 	// This should be fixed, but might have unforeseen ramifications so...
 	CvPlayer& kPossibleVictimPlayer = GET_PLAYER(ePossibleVictimPlayer);
-	bool bPossibileVictimIsHuman = kPossibleVictimPlayer.isHuman();
+	bool bPossibleVictimIsHuman = kPossibleVictimPlayer.isHuman();
 
 	// This may 'kill' the player if it is deemed that he does not have the proper units to stay alive
 	kPossibleVictimPlayer.verifyAlive();
@@ -34364,7 +34385,7 @@ void CvPlayer::CheckForMurder(PlayerTypes ePossibleVictimPlayer)
 		// Leader pops up and whines
 		if(!CvPreGame::isNetworkMultiplayerGame())		// Not in MP
 		{
-			if(!bPossibileVictimIsHuman && !kPossibleVictimPlayer.isMinorCiv() && !kPossibleVictimPlayer.isBarbarian())
+			if(!bPossibleVictimIsHuman && !kPossibleVictimPlayer.isMinorCiv() && !kPossibleVictimPlayer.isBarbarian())
 				kPossibleVictimPlayer.GetDiplomacyAI()->DoKilledByPlayer(GetID());
 		}
 
@@ -34377,6 +34398,14 @@ void CvPlayer::CheckForMurder(PlayerTypes ePossibleVictimPlayer)
 				GET_PLAYER(eCleanupPlayer).GetDiplomacyAI()->KilledPlayerCleanup(kPossibleVictimPlayer.GetID());
 			}
 		}
+		
+#if defined(MOD_BALANCE_CORE_HAPPINESS)
+		if (MOD_BALANCE_CORE_HAPPINESS && kPossibleVictimPlayer.isMajorCiv())
+		{
+			kPossibleVictimPlayer.GetCulture()->SetWarWeariness(0);
+		}
+#endif
+		
 #if defined(MOD_BALANCE_CORE)
 		DoWarVictoryBonuses();
 #endif

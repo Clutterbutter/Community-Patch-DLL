@@ -1471,6 +1471,33 @@ void CvPlayerCulture::MoveWorks (GreatWorkSlotType eType, vector<CvGreatWorkBuil
 		}
 	}
 
+#if defined(MOD_BALANCE_CORE)
+	if (bSwap)
+	{
+#endif
+		// One more pass through those that are not endangered to see if swapping with another player would help (as long as this isn't Music)
+		if (eType != CvTypes::getGREAT_WORK_SLOT_MUSIC())
+		{
+			// CUSTOMLOG("  ... checking safe buildings for swaps");
+			for (itBuilding = buildings.begin(); itBuilding != buildings.end(); itBuilding++)
+			{
+				if (!itBuilding->m_bEndangered && !itBuilding->m_bThemed)
+				{
+					if (ThemeBuilding(itBuilding, works1, works2, true /*bConsiderOtherPlayers*/))
+					{
+						itBuilding->m_bThemed = true;
+#if defined(MOD_BALANCE_CORE)
+						bUpdate = true;
+#endif
+					}
+				}
+			}
+		}
+#if defined(MOD_BALANCE_CORE)
+	}
+#endif
+	MoveSingleWorks(buildings, works1, works2, eFocusYield, false);
+
 	// Next building that are not endangered and are puppets
 	// CUSTOMLOG("  ... theming safe buildings");
 	for (itBuilding = buildings.begin(); itBuilding != buildings.end(); itBuilding++)
@@ -1504,31 +1531,7 @@ void CvPlayerCulture::MoveWorks (GreatWorkSlotType eType, vector<CvGreatWorkBuil
 			}
 		}
 	}
-#if defined(MOD_BALANCE_CORE)
-	if(bSwap)
-	{
-#endif
-	// One more pass through those that are not endangered to see if swapping with another player would help (as long as this isn't Music)
-	if (eType != CvTypes::getGREAT_WORK_SLOT_MUSIC())
-	{
-		// CUSTOMLOG("  ... checking safe buildings for swaps");
-		for (itBuilding = buildings.begin(); itBuilding != buildings.end(); itBuilding++)
-		{
-			if (!itBuilding->m_bEndangered && !itBuilding->m_bThemed)
-			{
-				if (ThemeBuilding(itBuilding, works1, works2, true /*bConsiderOtherPlayers*/))
-				{
-					itBuilding->m_bThemed = true;
-#if defined(MOD_BALANCE_CORE)
-					bUpdate = true;
-#endif
-				}
-			}
-		}
-	}
-#if defined(MOD_BALANCE_CORE)
-	}
-#endif
+
 	// Set the first work left that we haven't themed as something we'd be willing to trade
 	// CUSTOMLOG("Setting available swaps");
 	//    for Writing
@@ -1607,7 +1610,7 @@ void CvPlayerCulture::MoveWorks (GreatWorkSlotType eType, vector<CvGreatWorkBuil
 		}
 	}
 #if defined(MOD_GLOBAL_GREATWORK_YIELDTYPES)
-	bool bSecondUpdate = MoveSingleWorks(buildings, works1, works2, eFocusYield);
+	bool bSecondUpdate = MoveSingleWorks(buildings, works1, works2, eFocusYield, true);
 #else
 	// Fill unthemed buildings, first those that aren't endangered
 	for (itBuilding = buildings.begin(); itBuilding != buildings.end(); itBuilding++)
@@ -2689,7 +2692,7 @@ bool CvPlayerCulture::ThemeEqualArtArtifact(CvGreatWorkBuildingInMyEmpire kBldg,
 }
 
 #if defined(MOD_GLOBAL_GREATWORK_YIELDTYPES)
-bool CvPlayerCulture::MoveSingleWorks(vector<CvGreatWorkBuildingInMyEmpire> &buildings, vector<CvGreatWorkInMyEmpire> &works1, vector<CvGreatWorkInMyEmpire> &works2, YieldTypes eFocusYield)
+bool CvPlayerCulture::MoveSingleWorks(vector<CvGreatWorkBuildingInMyEmpire> &buildings, vector<CvGreatWorkInMyEmpire> &works1, vector<CvGreatWorkInMyEmpire> &works2, YieldTypes eFocusYield, bool bPuppet)
 {
 	// CUSTOMLOG("Move Single Works");
 	vector<CvGreatWorkBuildingInMyEmpire>::iterator itBuilding;
@@ -2721,21 +2724,26 @@ bool CvPlayerCulture::MoveSingleWorks(vector<CvGreatWorkBuildingInMyEmpire> &bui
 	{
 		if (!itBuilding->m_bThemed) {
 			if (!itBuilding->m_bEndangered) {
-				if (!itBuilding->m_bPuppet) {
-					if (itBuilding->m_eYieldType == eFocusYield) {
-						homelandBuildingsFocus.push_back(*itBuilding);
-					} else if (itBuilding->m_eYieldType != NO_YIELD) {
-						homelandBuildingsAny.push_back(*itBuilding);
-					} else {
-						homelandBuildingsNone.push_back(*itBuilding);
-					}
-				} else {
+				if (itBuilding->m_bPuppet && bPuppet) {
 					if (itBuilding->m_eYieldType == eFocusYield) {
 						puppetBuildingsFocus.push_back(*itBuilding);
-					} else if (itBuilding->m_eYieldType != NO_YIELD) {
+					}
+					else if (itBuilding->m_eYieldType != NO_YIELD) {
 						puppetBuildingsAny.push_back(*itBuilding);
-					} else {
+					}
+					else {
 						puppetBuildingsNone.push_back(*itBuilding);
+					}
+					
+				} else {
+					if (itBuilding->m_eYieldType == eFocusYield) {
+						homelandBuildingsFocus.push_back(*itBuilding);
+					}
+					else if (itBuilding->m_eYieldType != NO_YIELD) {
+						homelandBuildingsAny.push_back(*itBuilding);
+					}
+					else {
+						homelandBuildingsNone.push_back(*itBuilding);
 					}
 				}
 			} else {
@@ -2754,16 +2762,16 @@ bool CvPlayerCulture::MoveSingleWorks(vector<CvGreatWorkBuildingInMyEmpire> &bui
 	for (itBuilding = homelandBuildingsFocus.begin(); itBuilding != homelandBuildingsFocus.end(); itBuilding++) {
 		bUpdate = FillBuilding(itBuilding, works1, works2);
 	}
-	for (itBuilding = puppetBuildingsFocus.begin(); itBuilding != puppetBuildingsFocus.end(); itBuilding++) {
-		bUpdate = FillBuilding(itBuilding, works1, works2);
-	}
 	for (itBuilding = homelandBuildingsAny.begin(); itBuilding != homelandBuildingsAny.end(); itBuilding++) {
 		bUpdate = FillBuilding(itBuilding, works1, works2);
 	}
-	for (itBuilding = puppetBuildingsAny.begin(); itBuilding != puppetBuildingsAny.end(); itBuilding++) {
+	for (itBuilding = homelandBuildingsNone.begin(); itBuilding != homelandBuildingsNone.end(); itBuilding++) {
 		bUpdate = FillBuilding(itBuilding, works1, works2);
 	}
-	for (itBuilding = homelandBuildingsNone.begin(); itBuilding != homelandBuildingsNone.end(); itBuilding++) {
+	for (itBuilding = puppetBuildingsFocus.begin(); itBuilding != puppetBuildingsFocus.end(); itBuilding++) {
+		bUpdate = FillBuilding(itBuilding, works1, works2);
+	}
+	for (itBuilding = puppetBuildingsAny.begin(); itBuilding != puppetBuildingsAny.end(); itBuilding++) {
 		bUpdate = FillBuilding(itBuilding, works1, works2);
 	}
 	for (itBuilding = puppetBuildingsNone.begin(); itBuilding != puppetBuildingsNone.end(); itBuilding++) {
@@ -3214,7 +3222,10 @@ void CvPlayerCulture::DoArchaeologyChoice (ArchaeologyChoiceType eChoice)
 		{
 			if (pPlot->getOwner() != pUnit->getOwner() && pPlot->getOwner() != NO_PLAYER)
 			{
-				GET_PLAYER(pPlot->getOwner()).GetDiplomacyAI()->ChangeNegativeArchaeologyPoints(pUnit->getOwner(), 10);
+				if (!GET_PLAYER(pPlot->getOwner()).isMinorCiv() && !GET_PLAYER(pPlot->getOwner()).isBarbarian())
+				{
+					GET_PLAYER(pPlot->getOwner()).GetDiplomacyAI()->ChangeNegativeArchaeologyPoints(pUnit->getOwner(), 50);
+				}
 			}
 		}
 		pHousingCity = m_pPlayer->GetCulture()->GetClosestAvailableGreatWorkSlot(pPlot->getX(), pPlot->getY(), eArtArtifactSlot, &eBuildingToHouse, &iSlot);
@@ -3279,7 +3290,10 @@ void CvPlayerCulture::DoArchaeologyChoice (ArchaeologyChoiceType eChoice)
 		{
 			if (pPlot->getOwner() != pUnit->getOwner() && pPlot->getOwner() != NO_PLAYER)
 			{
-				GET_PLAYER(pPlot->getOwner()).GetDiplomacyAI()->ChangeNegativeArchaeologyPoints(pUnit->getOwner(), 10);
+				if (!GET_PLAYER(pPlot->getOwner()).isMinorCiv() && !GET_PLAYER(pPlot->getOwner()).isBarbarian())
+				{
+					GET_PLAYER(pPlot->getOwner()).GetDiplomacyAI()->ChangeNegativeArchaeologyPoints(pUnit->getOwner(), 50);
+				}
 			}
 		}
 		pHousingCity = m_pPlayer->GetCulture()->GetClosestAvailableGreatWorkSlot(pPlot->getX(), pPlot->getY(), eArtArtifactSlot, &eBuildingToHouse, &iSlot);
@@ -3345,7 +3359,10 @@ void CvPlayerCulture::DoArchaeologyChoice (ArchaeologyChoiceType eChoice)
 		{
 			if (pPlot->getOwner() != pUnit->getOwner() && pPlot->getOwner() != NO_PLAYER)
 			{
-				GET_PLAYER(pPlot->getOwner()).GetDiplomacyAI()->ChangeNegativeArchaeologyPoints(pUnit->getOwner(), 10);
+				if (!GET_PLAYER(pPlot->getOwner()).isMinorCiv() && !GET_PLAYER(pPlot->getOwner()).isBarbarian())
+				{
+					GET_PLAYER(pPlot->getOwner()).GetDiplomacyAI()->ChangeNegativeArchaeologyPoints(pUnit->getOwner(), 50);
+				}
 			}
 		}
 		pHousingCity = m_pPlayer->GetCulture()->GetClosestAvailableGreatWorkSlot(pPlot->getX(), pPlot->getY(), eWritingSlot, &eBuildingToHouse, &iSlot);
@@ -3413,7 +3430,10 @@ void CvPlayerCulture::DoArchaeologyChoice (ArchaeologyChoiceType eChoice)
 		{
 			if (pPlot->getOwner() != pUnit->getOwner() && pPlot->getOwner() != NO_PLAYER)
 			{
-				GET_PLAYER(pPlot->getOwner()).GetDiplomacyAI()->ChangeNegativeArchaeologyPoints(pUnit->getOwner(), 10);
+				if (!GET_PLAYER(pPlot->getOwner()).isMinorCiv() && !GET_PLAYER(pPlot->getOwner()).isBarbarian())
+				{
+					GET_PLAYER(pPlot->getOwner()).GetDiplomacyAI()->ChangeNegativeArchaeologyPoints(pUnit->getOwner(), 50);
+				}
 			}
 		}
 
@@ -5396,6 +5416,9 @@ void CvPlayerCulture::AddTourismAllKnownCivsWithModifiers(int iTourism)
 /// What is our war weariness value?
 int CvPlayerCulture::ComputeWarWeariness()
 {
+	if (m_pPlayer->isMinorCiv() || m_pPlayer->isBarbarian())
+		return 0;
+	
 	int iCurrentWeary = m_iRawWarWeariness;
 	if (iCurrentWeary == 0 && !m_pPlayer->IsAtWarAnyMajor())
 		return 0;
@@ -5410,7 +5433,7 @@ int CvPlayerCulture::ComputeWarWeariness()
 	for (int iLoopPlayer = 0; iLoopPlayer < MAX_MAJOR_CIVS; iLoopPlayer++)
 	{
 		CvPlayer &kPlayer = GET_PLAYER((PlayerTypes)iLoopPlayer);
-		if (iLoopPlayer != m_pPlayer->GetID() && kPlayer.isAlive() && !kPlayer.isMinorCiv() && !kPlayer.isBarbarian())
+		if (iLoopPlayer != m_pPlayer->GetID() && kPlayer.isAlive() && !kPlayer.isMinorCiv() && !kPlayer.isBarbarian() && kPlayer.getNumCities() > 0)
 		{
 			if(GET_TEAM(kPlayer.getTeam()).isAtWar(m_pPlayer->getTeam()))
 			{
